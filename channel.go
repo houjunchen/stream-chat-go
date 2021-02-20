@@ -515,6 +515,60 @@ func (c *Client) CreateChannel(chanType, chanID, userID string, data map[string]
 	return ch, nil
 }
 
+type ExportChannelRequestChannel struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+}
+
+type ExportChannelRequest struct {
+	Channels []ExportChannelRequestChannel `json:"channels"`
+}
+
+type ExportChannelResponse struct {
+	TaskID string `json:"task_id"`
+}
+
+func (c *Client) ExportChannel(chanType, chanID string) (string, error) {
+	data := &ExportChannelRequest{
+		Channels: []ExportChannelRequestChannel{
+			{
+				Type: chanType,
+				ID:   chanID,
+			},
+		},
+	}
+	return c.ExportChannels(data)
+}
+
+func (c *Client) ExportChannels(data *ExportChannelRequest) (string, error) {
+	result := &ExportChannelResponse{}
+	if err := c.makeRequest(http.MethodPost, "export_channels", nil, data, result); err != nil {
+		return "", err
+	}
+	return result.TaskID, nil
+}
+
+type ExportChannelStatusResponse struct {
+	Result struct {
+		URL string `json:"url"`
+	} `json:"result"`
+	Error struct {
+		Description string `json:"description"`
+		Type        string `json:"type"`
+	} `json:"error"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+}
+
+func (c *Client) GetExportChannelStatus(taskID string) (*ExportChannelStatusResponse, error) {
+	var resp ExportChannelStatusResponse
+	p := path.Join("export_channels", url.PathEscape(taskID))
+	if err := c.makeRequest(http.MethodGet, p, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 type SendFileRequest struct {
 	Reader io.Reader `json:"-"`
 	// name of the file would be stored
